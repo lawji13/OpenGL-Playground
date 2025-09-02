@@ -3,13 +3,14 @@
 #include <stdbool.h>
 #include <math.h>
 #include <stdlib.h>
+#include <fcntl.h>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-#define SEGMENTS 360
+#define SEGMENTS 36
 #define CAPACITY 4096
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
@@ -17,24 +18,6 @@ void processInput(GLFWwindow *window);
 
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 800;
-
-const char *vertexShaderSource = "#version 330 core\n"
-    "layout (location = 0) in vec4 aPos;\n"
-    "layout (location = 1) in vec2 aTexCoord;\n"
-    "out vec2 TexCoord;\n"
-    "void main()\n"
-    "{\n"
-    "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-    "   TexCoord = vec2(aTexCoord.x, aTexCoord.y);\n"
-    "}\0";
-const char *fragmentShaderSource = "#version 330 core\n"
-    "out vec4 FragColor;\n"
-    "in vec2 TexCoord;\n"
-    "uniform sampler2D texture1;"
-    "void main()\n"
-    "{\n"
-    "   FragColor = texture(texture1, TexCoord);\n"
-    "}\n\0";
 
 typedef struct Float_Buffer
 {
@@ -64,6 +47,35 @@ void  push_back_fb(struct Float_Buffer* buff, float f)
     buff->size++;
 }
 
+bool read_file(const char* file_path, char** file_contents)
+{
+    FILE* file;
+    if ((file = fopen(file_path, "r")) == NULL)
+    {
+        perror("Error reading file");
+        return false;
+    }
+
+    fseek(file, 0, SEEK_END);
+    size_t fileSize = ftell(file); 
+    fseek(file, 0, SEEK_SET);
+
+    *file_contents = (char *)malloc(fileSize + 1);
+
+    if (*file_contents == NULL)
+    {
+        perror("Error allocating memory");
+        fclose(file);
+        return false;
+    }
+
+    size_t bytesRead = fread(*file_contents, 1, fileSize, file);
+    file_contents[bytesRead] = '\0';
+
+    fclose(file);
+    return true;;
+}
+
 void make_circle_geom(Float_Buffer* buff, Index_Buffer* ibuff)
 {
     push_back_fb(buff, 0.0f); // center x
@@ -84,8 +96,6 @@ void make_circle_geom(Float_Buffer* buff, Index_Buffer* ibuff)
         push_back_fb(buff, y);
         push_back_fb(buff, s);
         push_back_fb(buff, t);
-
-                
         push_back_ib(ibuff, (i+2));
         push_back_ib(ibuff, (i+1));
         push_back_ib(ibuff, 0);
@@ -94,8 +104,25 @@ void make_circle_geom(Float_Buffer* buff, Index_Buffer* ibuff)
     push_back_ib(ibuff, 1);
     push_back_ib(ibuff, SEGMENTS);
     push_back_ib(ibuff, 0);
+}
 
-    
+bool compile_shader(const char* shader_src, int type, unsigned int* shader_handle)
+{
+    *shader_handle = glCreateShader(type);
+    glShaderSource(*shader_handle, 1, &shader_src, NULL);
+    glCompileShader(*shader_handle);
+
+    int success;
+    char infoLog[512];
+    glGetShaderiv(*shader_handle, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        glGetShaderInfoLog(*shader_handle, 512, NULL, infoLog);
+        printf("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n%s", infoLog);
+        return false;
+    }
+
+    return true;
 }
 
 int main()
@@ -103,7 +130,7 @@ int main()
     Float_Buffer fbuff = {0};
     Index_Buffer ibuff = {0};
     make_circle_geom(&fbuff, &ibuff);
-
+   
     // glfw: initialize and configure
     // ------------------------------
     glfwInit();
@@ -132,36 +159,20 @@ int main()
     }
 
 
-    // build and compile our shader program
-    // ------------------------------------
-    // vertex shader
-    unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    glCompileShader(vertexShader);
-    // check for shader compile errors
     int success;
     char infoLog[512];
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
-        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        printf("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n%s", infoLog);
-    }
-    // fragment shader
-    unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-    glCompileShader(fragmentShader);
-    // check for shader compile errors
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
-        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        printf("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n%s", infoLog);
-    }
-    // link shaders
+
+    unsigned int vs, fs;
+    char* vertex_shader_src;
+    char* fragment_shader_src;
+
+    if (!read_file("vertex.glsl", &vertex_shader_src) || !read_file("fragment.glsl", &fragment_shader_src)) {perror("Error reading shader file"); exit(0);}
+    if(!compile_shader(vertex_shader_src, GL_VERTEX_SHADER, &vs) || !compile_shader(fragment_shader_src, GL_FRAGMENT_SHADER, &fs)) {perror("Error compiling shader file"); exit(0);}
+    free(vertex_shader_src);
+    free(fragment_shader_src);
     unsigned int shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
+    glAttachShader(shaderProgram, vs);
+    glAttachShader(shaderProgram, fs);
     glLinkProgram(shaderProgram);
     // check for linking errors
     glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
@@ -170,8 +181,8 @@ int main()
         glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
         printf("ERROR::SHADER::PROGRAM::LINKING_FAILED\n%s", infoLog);
     }
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
+    glDeleteShader(vs);
+    glDeleteShader(fs);
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
@@ -208,7 +219,7 @@ int main()
     glBindTexture(GL_TEXTURE_2D, texture);
     
     int width, height, nrChannels;
-    unsigned char *data = stbi_load("wall.jpg", &width, &height, &nrChannels, 0);
+    unsigned char *data = stbi_load("smiley.jpg", &width, &height, &nrChannels, 0);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     if (data)
