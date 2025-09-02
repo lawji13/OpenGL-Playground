@@ -6,9 +6,11 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
-#define SEGMENTS 36
-#define CAPACITY 2048
+#define SEGMENTS 360
+#define CAPACITY 4096
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
@@ -18,43 +20,35 @@ const unsigned int SCR_HEIGHT = 800;
 
 const char *vertexShaderSource = "#version 330 core\n"
     "layout (location = 0) in vec4 aPos;\n"
+    "layout (location = 1) in vec2 aTexCoord;\n"
+    "out vec2 TexCoord;\n"
     "void main()\n"
     "{\n"
     "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
+    "   TexCoord = vec2(aTexCoord.x, aTexCoord.y);\n"
     "}\0";
 const char *fragmentShaderSource = "#version 330 core\n"
     "out vec4 FragColor;\n"
+    "in vec2 TexCoord;\n"
+    "uniform sampler2D texture1;"
     "void main()\n"
     "{\n"
-    "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
+    "   FragColor = texture(texture1, TexCoord);\n"
     "}\n\0";
 
-typedef struct V4f
+typedef struct Float_Buffer
 {
-    float x,y,z,w;
-}V4f;
-
-typedef struct Vertex_Buffer
-{
-    V4f buffer[CAPACITY];
+    float buffer[CAPACITY];
     size_t size;
-} Vertex_Buffer;
+}Float_Buffer;
 
 typedef struct Index_Buffer
 {
-    int buffer[CAPACITY/4];
+    int buffer[CAPACITY];
     size_t size;
 } Index_Buffer;
 
-void push_back(struct Vertex_Buffer* buff, struct V4f v)
-{
-    assert(buff->size < CAPACITY);
-
-    buff->buffer[buff->size] = v;
-    buff->size++;
-}
-
-void  push_back_int(struct Index_Buffer* buff, int i)
+void  push_back_ib(struct Index_Buffer* buff, int i)
 {
     assert(buff->size < CAPACITY);
 
@@ -62,42 +56,54 @@ void  push_back_int(struct Index_Buffer* buff, int i)
     buff->size++;
 }
 
-void make_circle_geom(Vertex_Buffer* vbuff, Index_Buffer* ibuff)
+void  push_back_fb(struct Float_Buffer* buff, float f)
 {
-    push_back(vbuff, (V4f){0.0f, 0.0f, 0.0f, 0.0f});
-  
+    assert(buff->size < CAPACITY);
+
+    buff->buffer[buff->size] = f;
+    buff->size++;
+}
+
+void make_circle_geom(Float_Buffer* buff, Index_Buffer* ibuff)
+{
+    push_back_fb(buff, 0.0f); // center x
+    push_back_fb(buff, 0.0f); // center y
+    push_back_fb(buff, 0.5f); // center s
+    push_back_fb(buff, 0.5f); // center t
+
     float deltaTheta = (2*M_PI)/SEGMENTS;
     for(int i=0; i<SEGMENTS; ++i)
     {
         float theta = deltaTheta * i;
-        push_back(vbuff, (V4f){cos(theta), sin(theta), 0.0f, 0.0f});
-        push_back_int(ibuff, (i+2));
-        push_back_int(ibuff, (i+1));
-        push_back_int(ibuff, 0);
+        float x = .3 * cos(theta);
+        float y = .3 * sin(theta);
+        float s = (-.5 * cos(theta) + 0.5f);
+        float t = (-.5 * sin(theta) + 0.5f);
+
+        push_back_fb(buff, x);
+        push_back_fb(buff, y);
+        push_back_fb(buff, s);
+        push_back_fb(buff, t);
+
+                
+        push_back_ib(ibuff, (i+2));
+        push_back_ib(ibuff, (i+1));
+        push_back_ib(ibuff, 0);
     }
 
-    push_back_int(ibuff, 1);
-    push_back_int(ibuff, SEGMENTS);
-    push_back_int(ibuff, 0);
+    push_back_ib(ibuff, 1);
+    push_back_ib(ibuff, SEGMENTS);
+    push_back_ib(ibuff, 0);
+
+    
 }
 
 int main()
-{
-    Vertex_Buffer vbuff = {0};
+{  
+    Float_Buffer fbuff = {0};
     Index_Buffer ibuff = {0};
-    //float *float_buffer = (float*) malloc(SEGMENTS * 3 * 3 * sizeof(float));
-  
-    make_circle_geom(&vbuff, &ibuff);
+    make_circle_geom(&fbuff, &ibuff);
 
-    for(size_t i=0; i<vbuff.size; ++i)
-    {
-        printf("V{%f, %f, %f, %f}\n", vbuff.buffer[i].x, vbuff.buffer[i].y, vbuff.buffer[i].z ,vbuff.buffer[i].w);
-    }
-
-    for(size_t i=0; i <ibuff.size; ++i)
-    {
-        printf("index %d\n", ibuff.buffer[i]);
-    }
     // glfw: initialize and configure
     // ------------------------------
     glfwInit();
@@ -177,25 +183,44 @@ int main()
     glBindVertexArray(VAO);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(V4f) * vbuff.size, vbuff.buffer, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * fbuff.size, &fbuff, GL_STATIC_DRAW);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(ibuff.buffer), ibuff.buffer, GL_STATIC_DRAW);
-  
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(V4f), (void*)0);
+
+    //pos
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 4, (void*)0);
     glEnableVertexAttribArray(0);
+
+    //text
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 4, (void*)(sizeof(float) * 2));
+    glEnableVertexAttribArray(1);
 
     // note that this is allowed, the call to glVertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
     glBindBuffer(GL_ARRAY_BUFFER, 0); 
 
     // You can unbind the VAO afterwards so other VAO calls won't accidentally modify this VAO, but this rarely happens. Modifying other
     // VAOs requires a call to glBindVertexArray anyways so we generally don't unbind VAOs (nor VBOs) when it's not directly necessary.
-    glBindVertexArray(0); 
+    glBindVertexArray(0);
 
-
-    // uncomment this call to draw in wireframe polygons.
-    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
+    unsigned int texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    
+    int width, height, nrChannels;
+    unsigned char *data = stbi_load("wall.jpg", &width, &height, &nrChannels, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    if (data)
+    {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
+    else
+    {
+        printf("Failed to load texture");
+    }
+    stbi_image_free(data);
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window))
