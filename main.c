@@ -4,6 +4,9 @@
 #include <math.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <unistd.h>
+
+#include<sys/time.h>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -12,6 +15,8 @@
 
 #define SEGMENTS 36
 #define CAPACITY 4096
+#define FPS 60
+#define US_PER_FRAME 1*1000*1000/FPS
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
@@ -31,7 +36,7 @@ typedef struct Index_Buffer
     size_t size;
 } Index_Buffer;
 
-void  push_back_ib(struct Index_Buffer* buff, int i)
+void push_back_ib(struct Index_Buffer* buff, int i)
 {
     assert(buff->size < CAPACITY);
 
@@ -39,7 +44,7 @@ void  push_back_ib(struct Index_Buffer* buff, int i)
     buff->size++;
 }
 
-void  push_back_fb(struct Float_Buffer* buff, float f)
+void push_back_fb(struct Float_Buffer* buff, float f)
 {
     assert(buff->size < CAPACITY);
 
@@ -70,7 +75,7 @@ bool read_file(const char* file_path, char** file_contents)
     }
 
     size_t bytesRead = fread(*file_contents, 1, fileSize, file);
-    file_contents[bytesRead] = '\0';
+    (*file_contents)[bytesRead] = '\0';
 
     fclose(file);
     return true;;
@@ -118,7 +123,7 @@ bool compile_shader(const char* shader_src, int type, unsigned int* shader_handl
     if (!success)
     {
         glGetShaderInfoLog(*shader_handle, 512, NULL, infoLog);
-        printf("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n%s", infoLog);
+        printf("ERROR::SHADER::%s::COMPILATION_FAILED\n%s", type == GL_VERTEX_SHADER ? "VERTEX" : "FRAGMENT", infoLog);
         return false;
     }
 
@@ -232,48 +237,71 @@ int main()
         printf("Failed to load texture");
     }
     stbi_image_free(data);
-    // render loop
-    // -----------
+
+    float scale_mat[16] = {
+        2.5f, 0.0f, 0.0f, 0.0f, 
+        0.0f, 2.5f, 0.0f, 0.0f, 
+        0.0f, 0.0f, 2.5f, 0.0f, 
+        0.0f, 0.0f, 0.0f, 1.0f};
+
+    float angle = 0;
+  
+    float transformations[2][16] = {0};
+    memcpy(transformations[0], scale_mat, sizeof(float) * 16);
+
+    struct timeval start_time = {0};
+    struct timeval end_time = {0};
+    int frame = 0;
     while (!glfwWindowShouldClose(window))
     {
-        // input
-        // -----
+        gettimeofday(&start_time, NULL);
+
+        angle = (float) (2 * M_PI) * (float) frame/FPS; 
+
         processInput(window);
 
-        // render
-        // ------
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        // draw our first triangle
+        float rotate_z_mat[16] = {
+            cosf(angle), -sinf(angle), 0.0f, 0.0f, 
+            sinf(angle), cosf(angle), 0.0f, 0.0f, 
+            0.0f,                 0.0f, 0.0f, 0.0f, 
+            0.0f,                 0.0f, 0.0f, 1.0f};
+
+        memcpy(transformations[1], rotate_z_mat, sizeof(float) * 16);
+      
         glUseProgram(shaderProgram);
-        glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
+        unsigned int transformLoc = glGetUniformLocation(shaderProgram, "transformations");
+        glUniformMatrix4fv(transformLoc, 2, GL_FALSE, (float*) transformations[0]);
+        unsigned int count_loc = glGetUniformLocation(shaderProgram, "transformation_count");
+        glUniform1i(count_loc, (int) sizeof(transformations)/(sizeof(float) * 16));
+        glBindVertexArray(VAO);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
         glDrawElements(GL_TRIANGLES, ibuff.size, GL_UNSIGNED_INT, 0);
 
-        //glDrawArrays(GL_TRIANGLES, 0, vbuff.size);
-        // glBindVertexArray(0); // no need to unbind it every time 
- 
-        // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
-        // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
         glfwPollEvents();
+
+        gettimeofday(&end_time, NULL);
+        long ellapsed_time_us = (end_time.tv_sec - start_time.tv_sec) * 1000000 + (end_time.tv_usec - start_time.tv_usec);
+        /* printf("ellapsed time in us = %ld\n", ellapsed_time_us); */
+        frame = (frame + 1)%FPS;
+        if(ellapsed_time_us < US_PER_FRAME)
+        {
+            usleep(US_PER_FRAME - ellapsed_time_us);
+        }
+        
     }
 
-    // optional: de-allocate all resources once they've outlived their purpose:
-    // ------------------------------------------------------------------------
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteProgram(shaderProgram);
-
-    // glfw: terminate, clearing all previously allocated GLFW resources.
-    // ------------------------------------------------------------------
     glfwTerminate();
+    
     return 0;
 }
 
-// process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
-// ---------------------------------------------------------------------------------------------------------
 void processInput(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -282,12 +310,8 @@ void processInput(GLFWwindow *window)
     }
 }
 
-// glfw: whenever the window size changed (by OS or user resize) this callback function executes
-// ---------------------------------------------------------------------------------------------
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
-    // make sure the viewport matches the new window dimensions; note that width and 
-    // height will be significantly larger than specified on retina displays.
     glViewport(0, 0, width, height);
 }
 
