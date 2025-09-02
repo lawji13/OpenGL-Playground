@@ -251,13 +251,15 @@ int main()
 
     struct timeval start_time = {0};
     struct timeval end_time = {0};
-    int frame = 0;
+
+    #define RPS .5
+    float delta_rotation = RPS/FPS * 2 * (float) M_PI;
+    printf("%f delta rot\n", delta_rotation);
     while (!glfwWindowShouldClose(window))
     {
         gettimeofday(&start_time, NULL);
 
-        angle = (float) (2 * M_PI) * (float) frame/FPS; 
-
+        angle = fmodf((angle + delta_rotation), 2 * M_PI);
         processInput(window);
 
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
@@ -286,7 +288,6 @@ int main()
         gettimeofday(&end_time, NULL);
         long ellapsed_time_us = (end_time.tv_sec - start_time.tv_sec) * 1000000 + (end_time.tv_usec - start_time.tv_usec);
         /* printf("ellapsed time in us = %ld\n", ellapsed_time_us); */
-        frame = (frame + 1)%FPS;
         if(ellapsed_time_us < US_PER_FRAME)
         {
             usleep(US_PER_FRAME - ellapsed_time_us);
