@@ -9,20 +9,18 @@
 #include<sys/time.h>
 
 #include <glad/glad.h>
-#include <GLFW/glfw3.h>
+
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#include "transform.h"
+#include "render_window.h"
 
 #define SEGMENTS 36
 #define CAPACITY 4096
 #define FPS 60
 #define US_PER_FRAME 1*1000*1000/FPS
-
-void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void processInput(GLFWwindow *window);
-
-const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 800;
+#define WINDOW_WIDTH 800
+#define WINDOW_HEIGHT 800
 
 typedef struct Float_Buffer
 {
@@ -131,32 +129,13 @@ bool compile_shader(const char* shader_src, int type, unsigned int* shader_handl
 }
 
 int main()
-{  
+{
+    RenderWindow window = {0};
+    render_window_init(&window, WINDOW_WIDTH, WINDOW_HEIGHT, "LearnOpenGl");
     Float_Buffer fbuff = {0};
     Index_Buffer ibuff = {0};
     make_circle_geom(&fbuff, &ibuff);
    
-    // glfw: initialize and configure
-    // ------------------------------
-    glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-    // glfw window creation
-    // --------------------
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
-    if (window == NULL)
-    {
-        printf("Failed to create GLFW window\n");
-        glfwTerminate();
-        return -1;
-    }
-    glfwMakeContextCurrent(window);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-
-    // glad: load all OpenGL function pointers
-    // ---------------------------------------
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
         printf("Failed to initialize GLAD");
@@ -238,51 +217,40 @@ int main()
     }
     stbi_image_free(data);
 
-    float scale_mat[16] = {
-        2.5f, 0.0f, 0.0f, 0.0f, 
-        0.0f, 2.5f, 0.0f, 0.0f, 
-        0.0f, 0.0f, 2.5f, 0.0f, 
-        0.0f, 0.0f, 0.0f, 1.0f};
-
-    float angle = 0;
-  
-    float transformations[2][16] = {0};
-    memcpy(transformations[0], scale_mat, sizeof(float) * 16);
-
     struct timeval start_time = {0};
     struct timeval end_time = {0};
 
+    TransformList transformations = {0};
+    
     #define RPS .5
+    float angle = 0;
     float delta_rotation = RPS/FPS * 2 * (float) M_PI;
-    printf("%f delta rot\n", delta_rotation);
-    while (!glfwWindowShouldClose(window))
+
+    while (!render_window_should_close(&window))
     {
         gettimeofday(&start_time, NULL);
+        transform_list_clear(&transformations);
 
         angle = fmodf((angle + delta_rotation), 2 * M_PI);
-        processInput(window);
+        render_window_process_input(&window);
 
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        float rotate_z_mat[16] = {
-            cosf(angle), -sinf(angle), 0.0f, 0.0f, 
-            sinf(angle), cosf(angle), 0.0f, 0.0f, 
-            0.0f,                 0.0f, 0.0f, 0.0f, 
-            0.0f,                 0.0f, 0.0f, 1.0f};
-
-        memcpy(transformations[1], rotate_z_mat, sizeof(float) * 16);
+        scale(&transformations, 2.5, 2.5, 2.5);
+        rotate_ccw_z(&transformations, angle);
+        //translate(&transformations, 10, 0, 0);
       
         glUseProgram(shaderProgram);
         unsigned int transformLoc = glGetUniformLocation(shaderProgram, "transformations");
-        glUniformMatrix4fv(transformLoc, 2, GL_FALSE, (float*) transformations[0]);
+        glUniformMatrix4fv(transformLoc, transformations.size, GL_FALSE, (float*) transformations.transformations[0]);
         unsigned int count_loc = glGetUniformLocation(shaderProgram, "transformation_count");
-        glUniform1i(count_loc, (int) sizeof(transformations)/(sizeof(float) * 16));
+        glUniform1i(count_loc, transformations.size);
         glBindVertexArray(VAO);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
         glDrawElements(GL_TRIANGLES, ibuff.size, GL_UNSIGNED_INT, 0);
 
-        glfwSwapBuffers(window);
+        glfwSwapBuffers(window.window);
         glfwPollEvents();
 
         gettimeofday(&end_time, NULL);
@@ -303,16 +271,7 @@ int main()
     return 0;
 }
 
-void processInput(GLFWwindow *window)
-{
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-    {
-        glfwSetWindowShouldClose(window, true);
-    }
-}
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
-{
-    glViewport(0, 0, width, height);
-}
+
+
 
