@@ -28,6 +28,28 @@ typedef struct Float_Buffer
     size_t size;
 }Float_Buffer;
 
+typedef struct Vec3
+{
+    float x,y,z;
+}Vec3;
+
+typedef struct Color
+{
+    float r,g,b;
+}Color;
+
+typedef struct Vertex
+{
+    Vec3 pos;
+    Color col;
+}Vertex;
+
+typedef struct Vertex_Buffer
+{
+    Vertex buffer[CAPACITY];
+    size_t size;
+}Vertex_Buffer;
+
 typedef struct Index_Buffer
 {
     int buffer[CAPACITY];
@@ -39,6 +61,14 @@ void push_back_ib(struct Index_Buffer* buff, int i)
     assert(buff->size < CAPACITY);
 
     buff->buffer[buff->size] = i;
+    buff->size++;
+}
+
+void push_back_vb(struct Vertex_Buffer* buff, Vertex vertex)
+{
+    assert(buff->size < CAPACITY);
+
+    buff->buffer[buff->size] = vertex;
     buff->size++;
 }
 
@@ -77,6 +107,200 @@ bool read_file(const char* file_path, char** file_contents)
 
     fclose(file);
     return true;;
+}
+
+void make_cube_geom_vb(Vertex_Buffer* buff, Index_Buffer* ibuff)
+{
+    //top back left
+    push_back_vb(buff,(Vertex) {(Vec3) {-0.25,  0.25,  -0.25}, (Color) {1.0f, 0.0f, 0.0f}});
+
+    //top back right
+    push_back_vb(buff,(Vertex) {(Vec3) {0.25,  0.25,  -0.25}, (Color) {1.0f, 0.0f, 0.0f}});
+
+    //bot back left
+    push_back_vb(buff,(Vertex) {(Vec3) {-0.25,  -0.25,  -0.25}, (Color) {1.0f, 0.0f, 0.0f}});
+
+    //bot back right
+    push_back_vb(buff,(Vertex) {(Vec3) {0.25,  -0.25,  -0.25}, (Color) {1.0f, 0.0f, 0.0f}});
+
+    //top front left
+    push_back_vb(buff,(Vertex) {(Vec3) {-0.25,  0.25,  0.25}, (Color) {0.0f, 0.0f, 1.0f}});
+
+    //top front right
+    push_back_vb(buff,(Vertex) {(Vec3) {0.25,  0.25,  0.25}, (Color) {0.0f, 0.0f, 1.0f}});
+
+    //bot front left
+    push_back_vb(buff,(Vertex) {(Vec3) {-0.25,  -0.25,  0.25}, (Color) {0.0f, 0.0f, 1.0f}});
+
+    //bot front right
+    push_back_vb(buff,(Vertex) {(Vec3) {0.25,  -0.25,  0.25}, (Color) {0.0f, 0.0f, 1.0f}});
+/*
+      Back Face    Front Face
+    0 -------- 1  4 -------- 5
+    |          |  |          |
+    |          |  |          |
+    |          |  |          |
+    |          |  |          |
+    2 -------- 3  6 -------- 7
+
+      Top Face       Bot Face  
+    0 -------- 1   6 -------- 7
+    |          |   |          |
+    |          |   |          |
+    |          |   |          |
+    |          |   |          |
+    4 -------- 5   2 -------- 3
+*/
+    //back square face
+    push_back_ib(ibuff, 0);
+    push_back_ib(ibuff, 1);
+    push_back_ib(ibuff, 2);
+    push_back_ib(ibuff, 2);
+    push_back_ib(ibuff, 1);
+    push_back_ib(ibuff, 3);
+
+    //front square face
+    push_back_ib(ibuff, 4);
+    push_back_ib(ibuff, 6);
+    push_back_ib(ibuff, 5);
+    push_back_ib(ibuff, 6);
+    push_back_ib(ibuff, 7);
+    push_back_ib(ibuff, 5);
+
+    //top square face
+    push_back_ib(ibuff, 4);
+    push_back_ib(ibuff, 1);
+    push_back_ib(ibuff, 0);
+    push_back_ib(ibuff, 4);
+    push_back_ib(ibuff, 5);
+    push_back_ib(ibuff, 1);
+
+    //bot square face
+    push_back_ib(ibuff, 6);
+    push_back_ib(ibuff, 2);
+    push_back_ib(ibuff, 3);
+    push_back_ib(ibuff, 7);
+    push_back_ib(ibuff, 6);
+    push_back_ib(ibuff, 3);
+
+    //right side face
+    push_back_ib(ibuff, 5);
+    push_back_ib(ibuff, 3);
+    push_back_ib(ibuff, 1);
+    push_back_ib(ibuff, 5);
+    push_back_ib(ibuff, 7);
+    push_back_ib(ibuff, 3);
+
+    //left side face
+    push_back_ib(ibuff, 0);
+    push_back_ib(ibuff, 2);
+    push_back_ib(ibuff, 4);
+    push_back_ib(ibuff, 2);
+    push_back_ib(ibuff, 6);
+    push_back_ib(ibuff, 4);
+
+}
+
+
+void make_cube_geom(Float_Buffer* buff, Index_Buffer* ibuff)
+{
+    //top back left
+    push_back_fb(buff, -0.25);
+    push_back_fb(buff, 0.25);
+    push_back_fb(buff, -0.25);
+
+    //top back right
+    push_back_fb(buff, 0.25);
+    push_back_fb(buff, 0.25);
+    push_back_fb(buff, -0.25);
+
+    //bot back left
+    push_back_fb(buff, -0.25);
+    push_back_fb(buff, -0.25);
+    push_back_fb(buff, -0.25);
+
+    //bot back right
+    push_back_fb(buff, 0.25);
+    push_back_fb(buff, -0.25);
+    push_back_fb(buff, -0.25);
+
+    //top front left
+    push_back_fb(buff, -0.25);
+    push_back_fb(buff, 0.25);
+    push_back_fb(buff, 0.25);
+
+    //top front right
+    push_back_fb(buff, 0.25);
+    push_back_fb(buff, 0.25);
+    push_back_fb(buff, 0.25);
+
+    //bot front left
+    push_back_fb(buff, -0.25);
+    push_back_fb(buff, -0.25);
+    push_back_fb(buff, 0.25);
+
+    //bot front right
+    push_back_fb(buff, 0.25);
+    push_back_fb(buff, -0.25);
+    push_back_fb(buff, 0.25);
+/*
+      Back Face    Front Face
+    0 -------- 1  4 -------- 5
+    |          |  |          |
+    |          |  |          |
+    |          |  |          |
+    |          |  |          |
+    2 -------- 3  6 -------- 7
+
+*/
+    //back square face
+    push_back_ib(ibuff, 0);
+    push_back_ib(ibuff, 1);
+    push_back_ib(ibuff, 2);
+    push_back_ib(ibuff, 2);
+    push_back_ib(ibuff, 1);
+    push_back_ib(ibuff, 3);
+
+    //front square face
+    push_back_ib(ibuff, 4);
+    push_back_ib(ibuff, 6);
+    push_back_ib(ibuff, 5);
+    push_back_ib(ibuff, 6);
+    push_back_ib(ibuff, 7);
+    push_back_ib(ibuff, 5);
+
+    //top square face
+    push_back_ib(ibuff, 4);
+    push_back_ib(ibuff, 1);
+    push_back_ib(ibuff, 0);
+    push_back_ib(ibuff, 4);
+    push_back_ib(ibuff, 5);
+    push_back_ib(ibuff, 1);
+
+    //bot square face
+    push_back_ib(ibuff, 6);
+    push_back_ib(ibuff, 3);
+    push_back_ib(ibuff, 2);
+    push_back_ib(ibuff, 6);
+    push_back_ib(ibuff, 7);
+    push_back_ib(ibuff, 3);
+
+    //right side face
+    push_back_ib(ibuff, 5);
+    push_back_ib(ibuff, 3);
+    push_back_ib(ibuff, 1);
+    push_back_ib(ibuff, 5);
+    push_back_ib(ibuff, 7);
+    push_back_ib(ibuff, 3);
+
+    //left side face
+    push_back_ib(ibuff, 0);
+    push_back_ib(ibuff, 2);
+    push_back_ib(ibuff, 4);
+    push_back_ib(ibuff, 2);
+    push_back_ib(ibuff, 6);
+    push_back_ib(ibuff, 4);
+
 }
 
 void make_circle_geom(Float_Buffer* buff, Index_Buffer* ibuff)
@@ -132,16 +356,14 @@ int main()
 {
     RenderWindow window = {0};
     render_window_init(&window, WINDOW_WIDTH, WINDOW_HEIGHT, "LearnOpenGl");
-    Float_Buffer fbuff = {0};
     Index_Buffer ibuff = {0};
-    make_circle_geom(&fbuff, &ibuff);
-   
+    Vertex_Buffer vbuff = {0};
+    make_cube_geom_vb(&vbuff, &ibuff);
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
         printf("Failed to initialize GLAD");
         return -1;
     }
-
 
     int success;
     char infoLog[512];
@@ -150,6 +372,9 @@ int main()
     char* vertex_shader_src;
     char* fragment_shader_src;
 
+    glEnable(GL_CULL_FACE);  
+    glCullFace(GL_BACK);
+    
     if (!read_file("vertex.glsl", &vertex_shader_src) || !read_file("fragment.glsl", &fragment_shader_src)) {perror("Error reading shader file"); exit(0);}
     if(!compile_shader(vertex_shader_src, GL_VERTEX_SHADER, &vs) || !compile_shader(fragment_shader_src, GL_FRAGMENT_SHADER, &fs)) {perror("Error compiling shader file"); exit(0);}
     free(vertex_shader_src);
@@ -178,18 +403,22 @@ int main()
     glBindVertexArray(VAO);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * fbuff.size, &fbuff, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * vbuff.size, &vbuff, GL_STATIC_DRAW);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(ibuff.buffer), ibuff.buffer, GL_STATIC_DRAW);
 
     //pos
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 4, (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 6, (void*)0);
     glEnableVertexAttribArray(0);
 
-    //text
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 4, (void*)(sizeof(float) * 2));
+    //color
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 6, (void*)(sizeof(float) * 3));
     glEnableVertexAttribArray(1);
+
+    //text
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 4, (void*)(sizeof(float) * 2));
+    glEnableVertexAttribArray(2);
 
     // note that this is allowed, the call to glVertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
     glBindBuffer(GL_ARRAY_BUFFER, 0); 
@@ -197,7 +426,7 @@ int main()
     // You can unbind the VAO afterwards so other VAO calls won't accidentally modify this VAO, but this rarely happens. Modifying other
     // VAOs requires a call to glBindVertexArray anyways so we generally don't unbind VAOs (nor VBOs) when it's not directly necessary.
     glBindVertexArray(0);
-
+  
     unsigned int texture;
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
@@ -220,32 +449,48 @@ int main()
     struct timeval start_time = {0};
     struct timeval end_time = {0};
 
-    TransformList transformations = {0};
-    
-    #define RPS .5
+    TransformList model = {0};
+    TransformList view = {0};
+    TransformList projection = {0};
+
+    #define RPS .2
     float angle = 0;
     float delta_rotation = RPS/FPS * 2 * (float) M_PI;
 
     while (!render_window_should_close(&window))
     {
         gettimeofday(&start_time, NULL);
-        transform_list_clear(&transformations);
+        transform_list_clear(&model);
+        transform_list_clear(&view);
+        transform_list_clear(&projection);
 
         angle = fmodf((angle + delta_rotation), 2 * M_PI);
         render_window_process_input(&window);
 
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClearColor(0.0f, 0.6f, 0.4f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        scale(&transformations, 2.5, 2.5, 2.5);
-        rotate_ccw_z(&transformations, angle);
-        //translate(&transformations, 10, 0, 0);
+        /* scale(&model, 2.5, 2.5, 2.5); */
+        rotate_cw_x(&model, angle);
+        rotate_cw_y(&model, angle);
+        /* rotate_cw_y(&model_transformations, angle); */
+        /* rotate_cw_z(&model_transformations, angle); */
+        /* translate(&model, 0, 2, 0); */
+
+        /* translate(&view, 0.0f, 0.0f, -3.0f); */
       
         glUseProgram(shaderProgram);
-        unsigned int transformLoc = glGetUniformLocation(shaderProgram, "transformations");
-        glUniformMatrix4fv(transformLoc, transformations.size, GL_FALSE, (float*) transformations.transformations[0]);
-        unsigned int count_loc = glGetUniformLocation(shaderProgram, "transformation_count");
-        glUniform1i(count_loc, transformations.size);
+        unsigned int model_loc = glGetUniformLocation(shaderProgram, "model");
+        glUniformMatrix4fv(model_loc, model.size, GL_FALSE, (float*) model.transformations[0]);
+        unsigned int count_loc = glGetUniformLocation(shaderProgram, "model_count");
+        glUniform1i(count_loc, model.size);
+
+        unsigned int view_loc = glGetUniformLocation(shaderProgram, "view");
+        glUniformMatrix4fv(view_loc, view.size, GL_FALSE, (float*) view.transformations[0]);
+
+        /* unsigned int projection_loc = glGetUniformLocation(shaderProgram, "projection"); */
+        /* glUniformMatrix4fv(projections_loc, projection.size, GL_FALSE, (float*) projections.transformations[0]); */
+
         glBindVertexArray(VAO);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
         glDrawElements(GL_TRIANGLES, ibuff.size, GL_UNSIGNED_INT, 0);

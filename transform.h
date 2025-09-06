@@ -21,7 +21,10 @@ typedef struct TransformList
 
 void transform_list_push(TransformList*, float[MATRIX_SIZE]);
 void transform_list_clear(TransformList*);
-
+void rotate_cw_x(TransformList*, float);
+void rotate_ccw_x(TransformList*, float);
+void rotate_cw_y(TransformList*, float);
+void rotate_ccw_y(TransformList*, float);
 void rotate_cw_z(TransformList*, float);
 void rotate_ccw_z(TransformList*, float);
 
