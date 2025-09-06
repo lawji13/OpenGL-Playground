@@ -3,5 +3,4 @@ Loosely following [LearnOpenGL](https://learnopengl.com/) while I attempt to lea
 ## References
 * [LearnOpenGL](https://learnopengl.com/)
 * [docs.gl](https://docs.gl/)
-
-
+* [Perspective Projection](https://ogldev.org/www/tutorial12/tutorial12.html)

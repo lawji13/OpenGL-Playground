@@ -20,7 +20,9 @@
 #define FPS 60
 #define US_PER_FRAME 1*1000*1000/FPS
 #define WINDOW_WIDTH 800
-#define WINDOW_HEIGHT 800
+#define WINDOW_HEIGHT 600
+#define ASPECT_RATIO (float) WINDOW_WIDTH/WINDOW_HEIGHT
+#define FOV M_PI/4
 
 typedef struct Float_Buffer
 {
@@ -373,7 +375,7 @@ int main()
     char* fragment_shader_src;
 
     glEnable(GL_CULL_FACE);  
-    glCullFace(GL_BACK);
+    glCullFace(GL_FRONT);
     
     if (!read_file("vertex.glsl", &vertex_shader_src) || !read_file("fragment.glsl", &fragment_shader_src)) {perror("Error reading shader file"); exit(0);}
     if(!compile_shader(vertex_shader_src, GL_VERTEX_SHADER, &vs) || !compile_shader(fragment_shader_src, GL_FRAGMENT_SHADER, &fs)) {perror("Error compiling shader file"); exit(0);}
@@ -453,43 +455,44 @@ int main()
     TransformList view = {0};
     TransformList projection = {0};
 
-    #define RPS .2
+    /* https://ogldev.org/www/tutorial12/tutorial12.html */
+    transform_list_push(&projection, (float[16]){
+        1/tanf(FOV/2),          0.0f, 0.0f, 0.0f,
+                 0.0f, 1/tanf(FOV/2), 0.0f, 0.0f,
+                 0.0f,          0.0f, 1.0f, 0.0f,
+                 0.0f,          0.0f, 1.0f, 0.0f});
+
+    transform_list_push(&view, (float[16]) IDENTITY_MATRIX);
+
+    #define RPS .1
     float angle = 0;
     float delta_rotation = RPS/FPS * 2 * (float) M_PI;
-
     while (!render_window_should_close(&window))
     {
         gettimeofday(&start_time, NULL);
         transform_list_clear(&model);
-        transform_list_clear(&view);
-        transform_list_clear(&projection);
 
         angle = fmodf((angle + delta_rotation), 2 * M_PI);
         render_window_process_input(&window);
 
         glClearColor(0.0f, 0.6f, 0.4f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
-
+        translate(&model, 0, 0, 2.5);
         /* scale(&model, 2.5, 2.5, 2.5); */
         rotate_cw_x(&model, angle);
         rotate_cw_y(&model, angle);
-        /* rotate_cw_y(&model_transformations, angle); */
-        /* rotate_cw_z(&model_transformations, angle); */
-        /* translate(&model, 0, 2, 0); */
-
-        /* translate(&view, 0.0f, 0.0f, -3.0f); */
       
         glUseProgram(shaderProgram);
         unsigned int model_loc = glGetUniformLocation(shaderProgram, "model");
-        glUniformMatrix4fv(model_loc, model.size, GL_FALSE, (float*) model.transformations[0]);
+        glUniformMatrix4fv(model_loc, model.size, GL_TRUE, (float*) model.transformations[0]);
         unsigned int count_loc = glGetUniformLocation(shaderProgram, "model_count");
         glUniform1i(count_loc, model.size);
 
         unsigned int view_loc = glGetUniformLocation(shaderProgram, "view");
-        glUniformMatrix4fv(view_loc, view.size, GL_FALSE, (float*) view.transformations[0]);
+        glUniformMatrix4fv(view_loc, view.size, GL_TRUE, (float*) view.transformations[0]);
 
-        /* unsigned int projection_loc = glGetUniformLocation(shaderProgram, "projection"); */
-        /* glUniformMatrix4fv(projections_loc, projection.size, GL_FALSE, (float*) projections.transformations[0]); */
+        unsigned int projection_loc = glGetUniformLocation(shaderProgram, "projection");
+        glUniformMatrix4fv(projection_loc, projection.size, GL_TRUE, (float*) projection.transformations[0]);
 
         glBindVertexArray(VAO);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);

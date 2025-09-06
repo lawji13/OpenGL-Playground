@@ -7,6 +7,8 @@ out vec3 Color;
 uniform mat4[10] model;
 uniform int model_count;
 uniform mat4 view;
+uniform mat4 projection;
+
 void main()
 {
     mat4 model_transform = mat4(1.0);
@@ -15,7 +17,7 @@ void main()
         model_transform = model_transform * model[i];
     }
     
-    gl_Position = model_transform * vec4(aPos, 1.0);
+    gl_Position = projection * view * model_transform * vec4(aPos, 1.0);
     Color = aColor;
     TexCoord = vec2(aTexCoord.x, aTexCoord.y);
 }
