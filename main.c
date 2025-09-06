@@ -21,7 +21,7 @@
 #define US_PER_FRAME 1*1000*1000/FPS
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
-#define ASPECT_RATIO (float) WINDOW_WIDTH/WINDOW_HEIGHT
+#define ASPECT_RATIO ((float) WINDOW_WIDTH/WINDOW_HEIGHT)
 #define FOV M_PI/4
 
 typedef struct Float_Buffer
@@ -373,8 +373,7 @@ int main()
     unsigned int vs, fs;
     char* vertex_shader_src;
     char* fragment_shader_src;
-
-    glEnable(GL_CULL_FACE);  
+    glEnable(GL_CULL_FACE);
     glCullFace(GL_FRONT);
     
     if (!read_file("vertex.glsl", &vertex_shader_src) || !read_file("fragment.glsl", &fragment_shader_src)) {perror("Error reading shader file"); exit(0);}
@@ -454,13 +453,17 @@ int main()
     TransformList model = {0};
     TransformList view = {0};
     TransformList projection = {0};
+    float near = 1.0f;
+    float far = 10.0f;
+    float diff = near - far;
 
     /* https://ogldev.org/www/tutorial12/tutorial12.html */
     transform_list_push(&projection, (float[16]){
-        1/tanf(FOV/2),          0.0f, 0.0f, 0.0f,
-                 0.0f, 1/tanf(FOV/2), 0.0f, 0.0f,
-                 0.0f,          0.0f, 1.0f, 0.0f,
-                 0.0f,          0.0f, 1.0f, 0.0f});
+            (1/tanf(FOV/2))/ASPECT_RATIO,          0.0f,               0.0f,                     0.0f,
+                                    0.0f, 1/tanf(FOV/2),               0.0f,                     0.0f,
+                                    0.0f,          0.0f, (-far - near)/diff, 2.0f * far * near / diff,
+                                    0.0f,          0.0f,               1.0f,                     0.0f}
+        );
 
     transform_list_push(&view, (float[16]) IDENTITY_MATRIX);
 
