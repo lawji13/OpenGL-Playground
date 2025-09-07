@@ -12,6 +12,7 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#include "util.h"
 #include "transform.h"
 #include "render_window.h"
 
@@ -82,34 +83,6 @@ void push_back_fb(struct Float_Buffer* buff, float f)
     buff->size++;
 }
 
-bool read_file(const char* file_path, char** file_contents)
-{
-    FILE* file;
-    if ((file = fopen(file_path, "r")) == NULL)
-    {
-        perror("Error reading file");
-        return false;
-    }
-
-    fseek(file, 0, SEEK_END);
-    size_t fileSize = ftell(file); 
-    fseek(file, 0, SEEK_SET);
-
-    *file_contents = (char *)malloc(fileSize + 1);
-
-    if (*file_contents == NULL)
-    {
-        perror("Error allocating memory");
-        fclose(file);
-        return false;
-    }
-
-    size_t bytesRead = fread(*file_contents, 1, fileSize, file);
-    (*file_contents)[bytesRead] = '\0';
-
-    fclose(file);
-    return true;;
-}
 
 void make_cube_geom_vb(Vertex_Buffer* buff, Index_Buffer* ibuff)
 {
@@ -358,33 +331,50 @@ int main()
 {
     RenderWindow window = {0};
     render_window_init(&window, WINDOW_WIDTH, WINDOW_HEIGHT, "LearnOpenGl");
+    
     Index_Buffer ibuff = {0};
     Vertex_Buffer vbuff = {0};
     make_cube_geom_vb(&vbuff, &ibuff);
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+    if(!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
         printf("Failed to initialize GLAD");
         return -1;
     }
 
-    int success;
-    char infoLog[512];
+    char *vertex_shader_src, *fragment_shader_src;
+    if(!(vertex_shader_src = read_file("vertex.glsl")))
+    {
+        perror("Error reading vertex shader file");
+        exit(0);
+    }
+    if(!(fragment_shader_src = read_file("fragment.glsl")))
+    {
+        perror("Error reading fragment shader file");
+        exit(0);
+    }
 
     unsigned int vs, fs;
-    char* vertex_shader_src;
-    char* fragment_shader_src;
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_FRONT);
+    if(!compile_shader(vertex_shader_src, GL_VERTEX_SHADER, &vs))
+    {
+        perror("Error compiling vertex shader file");
+        exit(0);
+    }
+    if(!compile_shader(fragment_shader_src, GL_FRAGMENT_SHADER, &fs))
+    {
+        perror("Error compiling fragment shader file");
+        exit(0);
+    }
     
-    if (!read_file("vertex.glsl", &vertex_shader_src) || !read_file("fragment.glsl", &fragment_shader_src)) {perror("Error reading shader file"); exit(0);}
-    if(!compile_shader(vertex_shader_src, GL_VERTEX_SHADER, &vs) || !compile_shader(fragment_shader_src, GL_FRAGMENT_SHADER, &fs)) {perror("Error compiling shader file"); exit(0);}
     free(vertex_shader_src);
     free(fragment_shader_src);
+
     unsigned int shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, vs);
     glAttachShader(shaderProgram, fs);
     glLinkProgram(shaderProgram);
-    // check for linking errors
+
+    int success;
+    char infoLog[512];
     glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
     if (!success)
     {
@@ -394,13 +384,11 @@ int main()
     glDeleteShader(vs);
     glDeleteShader(fs);
 
-    // set up vertex data (and buffer(s)) and configure vertex attributes
-    // ------------------------------------------------------------------
     unsigned int VBO, VAO, EBO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
     glGenBuffers(1, &EBO);
-    // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
+
     glBindVertexArray(VAO);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
@@ -421,11 +409,10 @@ int main()
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 4, (void*)(sizeof(float) * 2));
     glEnableVertexAttribArray(2);
 
-    // note that this is allowed, the call to glVertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
-    glBindBuffer(GL_ARRAY_BUFFER, 0); 
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_FRONT);
 
-    // You can unbind the VAO afterwards so other VAO calls won't accidentally modify this VAO, but this rarely happens. Modifying other
-    // VAOs requires a call to glBindVertexArray anyways so we generally don't unbind VAOs (nor VBOs) when it's not directly necessary.
+    glBindBuffer(GL_ARRAY_BUFFER, 0); 
     glBindVertexArray(0);
   
     unsigned int texture;
@@ -436,7 +423,7 @@ int main()
     unsigned char *data = stbi_load("smiley.jpg", &width, &height, &nrChannels, 0);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    if (data)
+    if(data)
     {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
@@ -451,21 +438,21 @@ int main()
     struct timeval end_time = {0};
 
     TransformList model = {0};
+    
     TransformList view = {0};
+    transform_list_push(&view, (float[16]) IDENTITY_MATRIX);
+    
     TransformList projection = {0};
     float near = 1.0f;
     float far = 10.0f;
     float diff = near - far;
-
     /* https://ogldev.org/www/tutorial12/tutorial12.html */
     transform_list_push(&projection, (float[16]){
-            (1/tanf(FOV/2))/ASPECT_RATIO,          0.0f,               0.0f,                     0.0f,
-                                    0.0f, 1/tanf(FOV/2),               0.0f,                     0.0f,
-                                    0.0f,          0.0f, (-far - near)/diff, 2.0f * far * near / diff,
-                                    0.0f,          0.0f,               1.0f,                     0.0f}
+            (1/tanf(FOV/2))/ASPECT_RATIO, 0.0f, 0.0f, 0.0f,
+            0.0f, 1/tanf(FOV/2), 0.0f, 0.0f,
+            0.0f, 0.0f, (-far - near)/diff, 2.0f * far * near / diff,
+            0.0f, 0.0f, 1.0f, 0.0f}
         );
-
-    transform_list_push(&view, (float[16]) IDENTITY_MATRIX);
 
     #define RPS .1
     float angle = 0;
@@ -511,7 +498,6 @@ int main()
         {
             usleep(US_PER_FRAME - ellapsed_time_us);
         }
-        
     }
 
     glDeleteVertexArrays(1, &VAO);
