@@ -24,6 +24,7 @@
 #define WINDOW_HEIGHT 600
 #define ASPECT_RATIO ((float) WINDOW_WIDTH/WINDOW_HEIGHT)
 #define FOV M_PI/4
+#define CUBE_COUNT 3
 
 typedef struct Float_Buffer
 {
@@ -335,6 +336,11 @@ int main()
     Index_Buffer ibuff = {0};
     Vertex_Buffer vbuff = {0};
     make_cube_geom_vb(&vbuff, &ibuff);
+    Vec3 cube_positions[CUBE_COUNT] = {
+        (Vec3){ 0.70f,  0.5f, 40.0f},
+        (Vec3){ -5.60f,  -0.5f, 10.0f},
+        (Vec3){ 3.40f,  -8.5f, 4.0f},
+    };
     if(!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
         printf("Failed to initialize GLAD");
@@ -440,14 +446,24 @@ int main()
     TransformList model = {0};
     
     TransformList view = {0};
-    transform_list_push(&view, (float[16]) IDENTITY_MATRIX);
+    Vec3 eye_pos = (Vec3) {0.0f, 0.0f, -1.0f};
+    Vec3 u = (Vec3) {1.0f, 0.0f, 0.0f};
+    Vec3 v = (Vec3) {0.0f, 1.0f, 0.0f};
+    Vec3 n = (Vec3) {0.0f, 0.0f, 1.0f};
+
+    transform_list_push(&view, (float[16]) {
+            u.x, u.y, u.z, -eye_pos.x,
+            v.x, v.y, v.z, -eye_pos.y,
+            n.x, n.y, n.z, -eye_pos.z,
+               0.0f, 0.0f, 0.0f, 1.0f}
+        );
     
     TransformList projection = {0};
     float near = 1.0f;
     float far = 10.0f;
     float diff = near - far;
     /* https://ogldev.org/www/tutorial12/tutorial12.html */
-    transform_list_push(&projection, (float[16]){
+    transform_list_push(&projection, (float[16]) {
             (1/tanf(FOV/2))/ASPECT_RATIO, 0.0f, 0.0f, 0.0f,
             0.0f, 1/tanf(FOV/2), 0.0f, 0.0f,
             0.0f, 0.0f, (-far - near)/diff, 2.0f * far * near / diff,
@@ -457,37 +473,58 @@ int main()
     #define RPS .1
     float angle = 0;
     float delta_rotation = RPS/FPS * 2 * (float) M_PI;
+    float eye = -10.0f;
     while (!render_window_should_close(&window))
     {
         gettimeofday(&start_time, NULL);
-        transform_list_clear(&model);
-
+        eye += .1;
         angle = fmodf((angle + delta_rotation), 2 * M_PI);
+        if(eye > 10.0){ eye = -10.0f;}
         render_window_process_input(&window);
-
         glClearColor(0.0f, 0.6f, 0.4f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
-        translate(&model, 0, 0, 2.5);
-        /* scale(&model, 2.5, 2.5, 2.5); */
-        rotate_cw_x(&model, angle);
-        rotate_cw_y(&model, angle);
+        for(size_t i=0; i<CUBE_COUNT; ++i)
+        {
+            transform_list_clear(&model);
+            transform_list_clear(&view);
+
+            float xp,yp,zp;
+            xp = cube_positions[i].x;
+            yp = cube_positions[i].y;
+            zp = cube_positions[i].z;
+            translate(&model, xp/5.0f, yp/5.0f, zp/5.0f);
+            /* scale(&model, 2.5, 2.5, 2.5); */
+            rotate_cw_x(&model, angle);
+            rotate_cw_y(&model, angle);
+
+            Vec3 eye_pos = (Vec3) {0.0f, 0.0f, eye};
+            Vec3 u = (Vec3) {1.0f, 0.0f, 0.0f};
+            Vec3 v = (Vec3) {0.0f, 1.0f, 0.0f};
+            Vec3 n = (Vec3) {0.0f, 0.0f, 1.0f};
+
+            transform_list_push(&view, (float[16]) {
+                    u.x, u.y, u.z, -eye_pos.x,
+                    v.x, v.y, v.z, -eye_pos.y,
+                    n.x, n.y, n.z, -eye_pos.z,
+                    0.0f, 0.0f, 0.0f, 1.0f}
+                );
       
-        glUseProgram(shaderProgram);
-        unsigned int model_loc = glGetUniformLocation(shaderProgram, "model");
-        glUniformMatrix4fv(model_loc, model.size, GL_TRUE, (float*) model.transformations[0]);
-        unsigned int count_loc = glGetUniformLocation(shaderProgram, "model_count");
-        glUniform1i(count_loc, model.size);
+            glUseProgram(shaderProgram);
+            unsigned int model_loc = glGetUniformLocation(shaderProgram, "model");
+            glUniformMatrix4fv(model_loc, model.size, GL_TRUE, (float*) model.transformations[0]);
+            unsigned int count_loc = glGetUniformLocation(shaderProgram, "model_count");
+            glUniform1i(count_loc, model.size);
 
-        unsigned int view_loc = glGetUniformLocation(shaderProgram, "view");
-        glUniformMatrix4fv(view_loc, view.size, GL_TRUE, (float*) view.transformations[0]);
+            unsigned int view_loc = glGetUniformLocation(shaderProgram, "view");
+            glUniformMatrix4fv(view_loc, view.size, GL_TRUE, (float*) view.transformations[0]);
 
-        unsigned int projection_loc = glGetUniformLocation(shaderProgram, "projection");
-        glUniformMatrix4fv(projection_loc, projection.size, GL_TRUE, (float*) projection.transformations[0]);
+            unsigned int projection_loc = glGetUniformLocation(shaderProgram, "projection");
+            glUniformMatrix4fv(projection_loc, projection.size, GL_TRUE, (float*) projection.transformations[0]);
 
-        glBindVertexArray(VAO);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        glDrawElements(GL_TRIANGLES, ibuff.size, GL_UNSIGNED_INT, 0);
-
+            glBindVertexArray(VAO);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+            glDrawElements(GL_TRIANGLES, ibuff.size, GL_UNSIGNED_INT, 0);
+        }
         glfwSwapBuffers(window.window);
         glfwPollEvents();
 
