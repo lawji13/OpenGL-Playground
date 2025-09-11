@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <glad/glad.h>
@@ -30,9 +31,32 @@ void render_window_process_input(RenderWindow *window)
     {
         glfwSetWindowShouldClose(window->window, true);
     }
+    if (glfwGetKey(window->window, GLFW_KEY_W) == GLFW_PRESS)
+    {
+        assert(window->callbacks[GLFW_KEY_W]);
+        window->callbacks[GLFW_KEY_W]();
+    }
+    if (glfwGetKey(window->window, GLFW_KEY_A) == GLFW_PRESS)
+    {
+        assert(window->callbacks[GLFW_KEY_A]);
+        window->callbacks[GLFW_KEY_A]();
+    }
+    if (glfwGetKey(window->window, GLFW_KEY_S) == GLFW_PRESS)
+    {
+        assert(window->callbacks[GLFW_KEY_S]);
+        window->callbacks[GLFW_KEY_S]();
+    }
+    if (glfwGetKey(window->window, GLFW_KEY_D) == GLFW_PRESS)
+    {
+        assert(window->callbacks[GLFW_KEY_D]);
+        window->callbacks[GLFW_KEY_D]();
+    }
+    
 }
-void render_window_add_callback(int key, void(*cb)(void))
+void render_window_add_callback(RenderWindow *window, int key, void(*cb)(void))
 {
+    assert(key < CALLBACK_CAPACITY);
+    window->callbacks[key] = cb;
 }
 
 bool render_window_should_close(RenderWindow *window)

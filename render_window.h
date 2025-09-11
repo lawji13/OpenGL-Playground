@@ -8,12 +8,12 @@
 typedef struct RenderWindow
 {
     GLFWwindow* window;
-    void(*callback[CALLBACK_CAPACITY])(void);
+    void(*callbacks[CALLBACK_CAPACITY])(void);
 }RenderWindow;
 
 void render_window_init(RenderWindow* window, int width, int height, const char* title);
 void render_window_process_input(RenderWindow *window);
-void render_window_add_callback(int key, void(*cb)(void));
+void render_window_add_callback(RenderWindow *window, int key, void(*cb)(void));
 bool render_window_should_close(RenderWindow *window);
 
 #endif // RENDER_WINDOW_H

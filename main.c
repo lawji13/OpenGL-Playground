@@ -60,6 +60,8 @@ typedef struct Index_Buffer
     size_t size;
 } Index_Buffer;
 
+Vec3 eye_pos = (Vec3) {0.0f, 1.0f, 0.0f};
+
 void push_back_ib(struct Index_Buffer* buff, int i)
 {
     assert(buff->size < CAPACITY);
@@ -328,10 +330,34 @@ bool compile_shader(const char* shader_src, int type, unsigned int* shader_handl
     return true;
 }
 
+void move_eye_forward(void)
+{
+    eye_pos = (Vec3) {eye_pos.x, eye_pos.y, eye_pos.z + 0.1f};
+}
+
+void move_eye_backward(void)
+{
+    eye_pos = (Vec3) {eye_pos.x, eye_pos.y, eye_pos.z - 0.1f};
+}
+
+void move_eye_right(void)
+{
+    eye_pos = (Vec3) {eye_pos.x + 0.1, eye_pos.y, eye_pos.z};
+}
+
+void move_eye_left(void)
+{
+    eye_pos = (Vec3) {eye_pos.x - 0.1, eye_pos.y, eye_pos.z};
+}
+
 int main()
 {
     RenderWindow window = {0};
     render_window_init(&window, WINDOW_WIDTH, WINDOW_HEIGHT, "LearnOpenGl");
+    render_window_add_callback(&window, GLFW_KEY_W, &move_eye_forward);
+    render_window_add_callback(&window, GLFW_KEY_S, &move_eye_backward);
+    render_window_add_callback(&window, GLFW_KEY_D, &move_eye_right);
+    render_window_add_callback(&window, GLFW_KEY_A, &move_eye_left);
     
     Index_Buffer ibuff = {0};
     Vertex_Buffer vbuff = {0};
@@ -341,6 +367,7 @@ int main()
         (Vec3){ -5.60f,  -0.5f, 10.0f},
         (Vec3){ 3.40f,  -8.5f, 4.0f},
     };
+    
     if(!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
         printf("Failed to initialize GLAD");
@@ -446,7 +473,6 @@ int main()
     TransformList model = {0};
     
     TransformList view = {0};
-    Vec3 eye_pos = (Vec3) {0.0f, 0.0f, -1.0f};
     Vec3 u = (Vec3) {1.0f, 0.0f, 0.0f};
     Vec3 v = (Vec3) {0.0f, 1.0f, 0.0f};
     Vec3 n = (Vec3) {0.0f, 0.0f, 1.0f};
@@ -473,13 +499,10 @@ int main()
     #define RPS .1
     float angle = 0;
     float delta_rotation = RPS/FPS * 2 * (float) M_PI;
-    float eye = -10.0f;
     while (!render_window_should_close(&window))
     {
         gettimeofday(&start_time, NULL);
-        eye += .1;
         angle = fmodf((angle + delta_rotation), 2 * M_PI);
-        if(eye > 10.0){ eye = -10.0f;}
         render_window_process_input(&window);
         glClearColor(0.0f, 0.6f, 0.4f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -497,7 +520,6 @@ int main()
             rotate_cw_x(&model, angle);
             rotate_cw_y(&model, angle);
 
-            Vec3 eye_pos = (Vec3) {0.0f, 0.0f, eye};
             Vec3 u = (Vec3) {1.0f, 0.0f, 0.0f};
             Vec3 v = (Vec3) {0.0f, 1.0f, 0.0f};
             Vec3 n = (Vec3) {0.0f, 0.0f, 1.0f};
