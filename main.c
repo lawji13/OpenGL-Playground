@@ -15,9 +15,10 @@
 #include "util.h"
 #include "transform.h"
 #include "render_window.h"
+#include "geom.h"
 
 #define SEGMENTS 36
-#define CAPACITY 4096
+
 #define FPS 60
 #define US_PER_FRAME 1*1000*1000/FPS
 #define WINDOW_WIDTH 800
@@ -26,290 +27,10 @@
 #define FOV M_PI/4
 #define CUBE_COUNT 3
 
-typedef struct Float_Buffer
-{
-    float buffer[CAPACITY];
-    size_t size;
-}Float_Buffer;
-
-typedef struct Vec3
-{
-    float x,y,z;
-}Vec3;
-
-typedef struct Color
-{
-    float r,g,b;
-}Color;
-
-typedef struct Vertex
-{
-    Vec3 pos;
-    Color col;
-}Vertex;
-
-typedef struct Vertex_Buffer
-{
-    Vertex buffer[CAPACITY];
-    size_t size;
-}Vertex_Buffer;
-
-typedef struct Index_Buffer
-{
-    int buffer[CAPACITY];
-    size_t size;
-} Index_Buffer;
 
 Vec3 eye_pos = (Vec3) {0.0f, 1.0f, 0.0f};
 
-void push_back_ib(struct Index_Buffer* buff, int i)
-{
-    assert(buff->size < CAPACITY);
-
-    buff->buffer[buff->size] = i;
-    buff->size++;
-}
-
-void push_back_vb(struct Vertex_Buffer* buff, Vertex vertex)
-{
-    assert(buff->size < CAPACITY);
-
-    buff->buffer[buff->size] = vertex;
-    buff->size++;
-}
-
-void push_back_fb(struct Float_Buffer* buff, float f)
-{
-    assert(buff->size < CAPACITY);
-
-    buff->buffer[buff->size] = f;
-    buff->size++;
-}
-
-
-void make_cube_geom_vb(Vertex_Buffer* buff, Index_Buffer* ibuff)
-{
-    //top back left
-    push_back_vb(buff,(Vertex) {(Vec3) {-0.25,  0.25,  -0.25}, (Color) {1.0f, 0.0f, 0.0f}});
-
-    //top back right
-    push_back_vb(buff,(Vertex) {(Vec3) {0.25,  0.25,  -0.25}, (Color) {1.0f, 0.0f, 0.0f}});
-
-    //bot back left
-    push_back_vb(buff,(Vertex) {(Vec3) {-0.25,  -0.25,  -0.25}, (Color) {1.0f, 0.0f, 0.0f}});
-
-    //bot back right
-    push_back_vb(buff,(Vertex) {(Vec3) {0.25,  -0.25,  -0.25}, (Color) {1.0f, 0.0f, 0.0f}});
-
-    //top front left
-    push_back_vb(buff,(Vertex) {(Vec3) {-0.25,  0.25,  0.25}, (Color) {0.0f, 0.0f, 1.0f}});
-
-    //top front right
-    push_back_vb(buff,(Vertex) {(Vec3) {0.25,  0.25,  0.25}, (Color) {0.0f, 0.0f, 1.0f}});
-
-    //bot front left
-    push_back_vb(buff,(Vertex) {(Vec3) {-0.25,  -0.25,  0.25}, (Color) {0.0f, 0.0f, 1.0f}});
-
-    //bot front right
-    push_back_vb(buff,(Vertex) {(Vec3) {0.25,  -0.25,  0.25}, (Color) {0.0f, 0.0f, 1.0f}});
-/*
-      Back Face    Front Face
-    0 -------- 1  4 -------- 5
-    |          |  |          |
-    |          |  |          |
-    |          |  |          |
-    |          |  |          |
-    2 -------- 3  6 -------- 7
-
-      Top Face       Bot Face  
-    0 -------- 1   6 -------- 7
-    |          |   |          |
-    |          |   |          |
-    |          |   |          |
-    |          |   |          |
-    4 -------- 5   2 -------- 3
-*/
-    //back square face
-    push_back_ib(ibuff, 0);
-    push_back_ib(ibuff, 1);
-    push_back_ib(ibuff, 2);
-    push_back_ib(ibuff, 2);
-    push_back_ib(ibuff, 1);
-    push_back_ib(ibuff, 3);
-
-    //front square face
-    push_back_ib(ibuff, 4);
-    push_back_ib(ibuff, 6);
-    push_back_ib(ibuff, 5);
-    push_back_ib(ibuff, 6);
-    push_back_ib(ibuff, 7);
-    push_back_ib(ibuff, 5);
-
-    //top square face
-    push_back_ib(ibuff, 4);
-    push_back_ib(ibuff, 1);
-    push_back_ib(ibuff, 0);
-    push_back_ib(ibuff, 4);
-    push_back_ib(ibuff, 5);
-    push_back_ib(ibuff, 1);
-
-    //bot square face
-    push_back_ib(ibuff, 6);
-    push_back_ib(ibuff, 2);
-    push_back_ib(ibuff, 3);
-    push_back_ib(ibuff, 7);
-    push_back_ib(ibuff, 6);
-    push_back_ib(ibuff, 3);
-
-    //right side face
-    push_back_ib(ibuff, 5);
-    push_back_ib(ibuff, 3);
-    push_back_ib(ibuff, 1);
-    push_back_ib(ibuff, 5);
-    push_back_ib(ibuff, 7);
-    push_back_ib(ibuff, 3);
-
-    //left side face
-    push_back_ib(ibuff, 0);
-    push_back_ib(ibuff, 2);
-    push_back_ib(ibuff, 4);
-    push_back_ib(ibuff, 2);
-    push_back_ib(ibuff, 6);
-    push_back_ib(ibuff, 4);
-
-}
-
-
-void make_cube_geom(Float_Buffer* buff, Index_Buffer* ibuff)
-{
-    //top back left
-    push_back_fb(buff, -0.25);
-    push_back_fb(buff, 0.25);
-    push_back_fb(buff, -0.25);
-
-    //top back right
-    push_back_fb(buff, 0.25);
-    push_back_fb(buff, 0.25);
-    push_back_fb(buff, -0.25);
-
-    //bot back left
-    push_back_fb(buff, -0.25);
-    push_back_fb(buff, -0.25);
-    push_back_fb(buff, -0.25);
-
-    //bot back right
-    push_back_fb(buff, 0.25);
-    push_back_fb(buff, -0.25);
-    push_back_fb(buff, -0.25);
-
-    //top front left
-    push_back_fb(buff, -0.25);
-    push_back_fb(buff, 0.25);
-    push_back_fb(buff, 0.25);
-
-    //top front right
-    push_back_fb(buff, 0.25);
-    push_back_fb(buff, 0.25);
-    push_back_fb(buff, 0.25);
-
-    //bot front left
-    push_back_fb(buff, -0.25);
-    push_back_fb(buff, -0.25);
-    push_back_fb(buff, 0.25);
-
-    //bot front right
-    push_back_fb(buff, 0.25);
-    push_back_fb(buff, -0.25);
-    push_back_fb(buff, 0.25);
-/*
-      Back Face    Front Face
-    0 -------- 1  4 -------- 5
-    |          |  |          |
-    |          |  |          |
-    |          |  |          |
-    |          |  |          |
-    2 -------- 3  6 -------- 7
-
-*/
-    //back square face
-    push_back_ib(ibuff, 0);
-    push_back_ib(ibuff, 1);
-    push_back_ib(ibuff, 2);
-    push_back_ib(ibuff, 2);
-    push_back_ib(ibuff, 1);
-    push_back_ib(ibuff, 3);
-
-    //front square face
-    push_back_ib(ibuff, 4);
-    push_back_ib(ibuff, 6);
-    push_back_ib(ibuff, 5);
-    push_back_ib(ibuff, 6);
-    push_back_ib(ibuff, 7);
-    push_back_ib(ibuff, 5);
-
-    //top square face
-    push_back_ib(ibuff, 4);
-    push_back_ib(ibuff, 1);
-    push_back_ib(ibuff, 0);
-    push_back_ib(ibuff, 4);
-    push_back_ib(ibuff, 5);
-    push_back_ib(ibuff, 1);
-
-    //bot square face
-    push_back_ib(ibuff, 6);
-    push_back_ib(ibuff, 3);
-    push_back_ib(ibuff, 2);
-    push_back_ib(ibuff, 6);
-    push_back_ib(ibuff, 7);
-    push_back_ib(ibuff, 3);
-
-    //right side face
-    push_back_ib(ibuff, 5);
-    push_back_ib(ibuff, 3);
-    push_back_ib(ibuff, 1);
-    push_back_ib(ibuff, 5);
-    push_back_ib(ibuff, 7);
-    push_back_ib(ibuff, 3);
-
-    //left side face
-    push_back_ib(ibuff, 0);
-    push_back_ib(ibuff, 2);
-    push_back_ib(ibuff, 4);
-    push_back_ib(ibuff, 2);
-    push_back_ib(ibuff, 6);
-    push_back_ib(ibuff, 4);
-
-}
-
-void make_circle_geom(Float_Buffer* buff, Index_Buffer* ibuff)
-{
-    push_back_fb(buff, 0.0f); // center x
-    push_back_fb(buff, 0.0f); // center y
-    push_back_fb(buff, 0.5f); // center s
-    push_back_fb(buff, 0.5f); // center t
-
-    float deltaTheta = (2*M_PI)/SEGMENTS;
-    for(int i=0; i<SEGMENTS; ++i)
-    {
-        float theta = deltaTheta * i;
-        float x = .3 * cos(theta);
-        float y = .3 * sin(theta);
-        float s = (-.5 * cos(theta) + 0.5f);
-        float t = (-.5 * sin(theta) + 0.5f);
-
-        push_back_fb(buff, x);
-        push_back_fb(buff, y);
-        push_back_fb(buff, s);
-        push_back_fb(buff, t);
-        push_back_ib(ibuff, (i+2));
-        push_back_ib(ibuff, (i+1));
-        push_back_ib(ibuff, 0);
-    }
-
-    push_back_ib(ibuff, 1);
-    push_back_ib(ibuff, SEGMENTS);
-    push_back_ib(ibuff, 0);
-}
+static int render_pass = 0;
 
 bool compile_shader(const char* shader_src, int type, unsigned int* shader_handle)
 {
@@ -361,12 +82,13 @@ int main()
     
     Index_Buffer ibuff = {0};
     Vertex_Buffer vbuff = {0};
-    make_cube_geom_vb(&vbuff, &ibuff);
-    Vec3 cube_positions[CUBE_COUNT] = {
-        (Vec3){ 0.70f,  0.5f, 40.0f},
-        (Vec3){ -5.60f,  -0.5f, 10.0f},
-        (Vec3){ 3.40f,  -8.5f, 4.0f},
-    };
+    make_sphere_geom(&vbuff, &ibuff, 20, 20);
+    /* make_cube_geom_vb(&vbuff, &ibuff); */
+    /* Vec3 cube_positions[CUBE_COUNT] = { */
+    /*     (Vec3){ 0.70f,  0.5f, 40.0f}, */
+    /*     (Vec3){ -5.60f,  -0.5f, 10.0f}, */
+    /*     (Vec3){ 3.40f,  -8.5f, 4.0f}, */
+    /* }; */
     
     if(!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
@@ -481,7 +203,7 @@ int main()
             u.x, u.y, u.z, -eye_pos.x,
             v.x, v.y, v.z, -eye_pos.y,
             n.x, n.y, n.z, -eye_pos.z,
-               0.0f, 0.0f, 0.0f, 1.0f}
+            0.0f, 0.0f, 0.0f, 1.0f}
         );
     
     TransformList projection = {0};
@@ -499,6 +221,7 @@ int main()
     #define RPS .1
     float angle = 0;
     float delta_rotation = RPS/FPS * 2 * (float) M_PI;
+    int cur_tri = 0;
     while (!render_window_should_close(&window))
     {
         gettimeofday(&start_time, NULL);
@@ -506,50 +229,52 @@ int main()
         render_window_process_input(&window);
         glClearColor(0.0f, 0.6f, 0.4f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
-        for(size_t i=0; i<CUBE_COUNT; ++i)
-        {
-            transform_list_clear(&model);
-            transform_list_clear(&view);
+        /* for(size_t i=0; i<CUBE_COUNT; ++i) */
+        /* { */
+        transform_list_clear(&model);
+        transform_list_clear(&view);
 
-            float xp,yp,zp;
-            xp = cube_positions[i].x;
-            yp = cube_positions[i].y;
-            zp = cube_positions[i].z;
-            translate(&model, xp/5.0f, yp/5.0f, zp/5.0f);
-            /* scale(&model, 2.5, 2.5, 2.5); */
-            rotate_cw_x(&model, angle);
-            rotate_cw_y(&model, angle);
+        float xp,yp,zp;
+        /* xp = cube_positions[i].x; */
+        /* yp = cube_positions[i].y; */
+        /* zp = cube_positions[i].z; */
+        /* translate(&model, xp/5.0f, yp/5.0f, zp/5.0f);e */
+        translate(&model, 0.0f, 0.0f, 5.5f);
+        /* scale(&model, 2.5, 2.5, 2.5); */
+        /* rotate_cw_x(&model, angle); */
+        /* rotate_cw_y(&model, angle); */
 
-            Vec3 u = (Vec3) {1.0f, 0.0f, 0.0f};
-            Vec3 v = (Vec3) {0.0f, 1.0f, 0.0f};
-            Vec3 n = (Vec3) {0.0f, 0.0f, 1.0f};
+        Vec3 u = (Vec3) {1.0f, 0.0f, 0.0f};
+        Vec3 v = (Vec3) {0.0f, 1.0f, 0.0f};
+        Vec3 n = (Vec3) {0.0f, 0.0f, 1.0f};
 
-            transform_list_push(&view, (float[16]) {
-                    u.x, u.y, u.z, -eye_pos.x,
-                    v.x, v.y, v.z, -eye_pos.y,
-                    n.x, n.y, n.z, -eye_pos.z,
-                    0.0f, 0.0f, 0.0f, 1.0f}
-                );
+        transform_list_push(&view, (float[16]) {
+                u.x, u.y, u.z, -eye_pos.x,
+                v.x, v.y, v.z, -eye_pos.y,
+                n.x, n.y, n.z, -eye_pos.z,
+                0.0f, 0.0f, 0.0f, 1.0f}
+            );
       
-            glUseProgram(shaderProgram);
-            unsigned int model_loc = glGetUniformLocation(shaderProgram, "model");
-            glUniformMatrix4fv(model_loc, model.size, GL_TRUE, (float*) model.transformations[0]);
-            unsigned int count_loc = glGetUniformLocation(shaderProgram, "model_count");
-            glUniform1i(count_loc, model.size);
+        glUseProgram(shaderProgram);
+        unsigned int model_loc = glGetUniformLocation(shaderProgram, "model");
+        glUniformMatrix4fv(model_loc, model.size, GL_TRUE, (float*) model.transformations[0]);
+        unsigned int count_loc = glGetUniformLocation(shaderProgram, "model_count");
+        glUniform1i(count_loc, model.size);
 
-            unsigned int view_loc = glGetUniformLocation(shaderProgram, "view");
-            glUniformMatrix4fv(view_loc, view.size, GL_TRUE, (float*) view.transformations[0]);
+        unsigned int view_loc = glGetUniformLocation(shaderProgram, "view");
+        glUniformMatrix4fv(view_loc, view.size, GL_TRUE, (float*) view.transformations[0]);
 
-            unsigned int projection_loc = glGetUniformLocation(shaderProgram, "projection");
-            glUniformMatrix4fv(projection_loc, projection.size, GL_TRUE, (float*) projection.transformations[0]);
+        unsigned int projection_loc = glGetUniformLocation(shaderProgram, "projection");
+        glUniformMatrix4fv(projection_loc, projection.size, GL_TRUE, (float*) projection.transformations[0]);
 
-            glBindVertexArray(VAO);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-            glDrawElements(GL_TRIANGLES, ibuff.size, GL_UNSIGNED_INT, 0);
-        }
+        glBindVertexArray(VAO);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+
+        glDrawElements(GL_TRIANGLES, ibuff.size, GL_UNSIGNED_INT, 0);
+             
+
         glfwSwapBuffers(window.window);
         glfwPollEvents();
-
         gettimeofday(&end_time, NULL);
         long ellapsed_time_us = (end_time.tv_sec - start_time.tv_sec) * 1000000 + (end_time.tv_usec - start_time.tv_usec);
         /* printf("ellapsed time in us = %ld\n", ellapsed_time_us); */
