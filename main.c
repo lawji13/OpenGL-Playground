@@ -8,14 +8,14 @@
 
 #include<sys/time.h>
 
-#include <glad/glad.h>
-
+#include "glad/glad.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include "util.h"
 #include "transform.h"
 #include "render_window.h"
 #include "geom.h"
+#include "camera.h"
 
 #define SEGMENTS 36
 
@@ -27,10 +27,11 @@
 #define FOV M_PI/4
 #define CUBE_COUNT 3
 
-
-Vec3 eye_pos = (Vec3) {0.0f, 1.0f, 0.0f};
-
-static int render_pass = 0;
+RenderWindow window = {0};
+Camera camera = {.position = (Vec3) {0.0f, 0.0f, -5.5f},
+                 .up = (Vec3) {0.0f, 1.0f, 0.0f},
+                 .target = (Vec3) {0.0f, 0.0f, 1.0f},
+};
 
 bool compile_shader(const char* shader_src, int type, unsigned int* shader_handle)
 {
@@ -53,27 +54,34 @@ bool compile_shader(const char* shader_src, int type, unsigned int* shader_handl
 
 void move_eye_forward(void)
 {
-    eye_pos = (Vec3) {eye_pos.x, eye_pos.y, eye_pos.z + 0.1f};
+    camera.position = (Vec3) {camera.position.x, camera.position.y, camera.position.z + 0.1f};
 }
 
 void move_eye_backward(void)
 {
-    eye_pos = (Vec3) {eye_pos.x, eye_pos.y, eye_pos.z - 0.1f};
+    camera.position = (Vec3) {camera.position.x, camera.position.y, camera.position.z - 0.1f};
 }
 
 void move_eye_right(void)
 {
-    eye_pos = (Vec3) {eye_pos.x + 0.1, eye_pos.y, eye_pos.z};
+    camera.position = (Vec3) {camera.position.x + 0.1, camera.position.y, camera.position.z};
 }
 
 void move_eye_left(void)
 {
-    eye_pos = (Vec3) {eye_pos.x - 0.1, eye_pos.y, eye_pos.z};
+    camera.position = (Vec3) {camera.position.x - 0.1, camera.position.y, camera.position.z};
+}
+
+void mouse_click(void)
+{
+    double x, y;
+    render_window_get_mouse_pos(&window, &x, &y);
+    printf("mouse clicked at %f, %f\n", x, y);
 }
 
 int main()
 {
-    RenderWindow window = {0};
+
     render_window_init(&window, WINDOW_WIDTH, WINDOW_HEIGHT, "LearnOpenGl");
     render_window_add_callback(&window, GLFW_KEY_W, &move_eye_forward);
     render_window_add_callback(&window, GLFW_KEY_S, &move_eye_backward);
@@ -82,14 +90,8 @@ int main()
     
     Index_Buffer ibuff = {0};
     Vertex_Buffer vbuff = {0};
-    make_sphere_geom(&vbuff, &ibuff, 20, 20);
-    /* make_cube_geom_vb(&vbuff, &ibuff); */
-    /* Vec3 cube_positions[CUBE_COUNT] = { */
-    /*     (Vec3){ 0.70f,  0.5f, 40.0f}, */
-    /*     (Vec3){ -5.60f,  -0.5f, 10.0f}, */
-    /*     (Vec3){ 3.40f,  -8.5f, 4.0f}, */
-    /* }; */
-    
+    make_sphere_geom(&vbuff, &ibuff, 30, 30);
+
     if(!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
         printf("Failed to initialize GLAD");
@@ -119,7 +121,7 @@ int main()
         perror("Error compiling fragment shader file");
         exit(0);
     }
-    
+
     free(vertex_shader_src);
     free(fragment_shader_src);
 
@@ -193,23 +195,18 @@ int main()
     struct timeval end_time = {0};
 
     TransformList model = {0};
-    
     TransformList view = {0};
-    Vec3 u = (Vec3) {1.0f, 0.0f, 0.0f};
-    Vec3 v = (Vec3) {0.0f, 1.0f, 0.0f};
-    Vec3 n = (Vec3) {0.0f, 0.0f, 1.0f};
-
-    transform_list_push(&view, (float[16]) {
-            u.x, u.y, u.z, -eye_pos.x,
-            v.x, v.y, v.z, -eye_pos.y,
-            n.x, n.y, n.z, -eye_pos.z,
-            0.0f, 0.0f, 0.0f, 1.0f}
-        );
-    
     TransformList projection = {0};
-    float near = 1.0f;
+    
+    float near = 0.0f;
     float far = 10.0f;
     float diff = near - far;
+    double prev_mouse_x = WINDOW_WIDTH/2;
+    double prev_mouse_y = WINDOW_HEIGHT/2;
+    double curr_mouse_x, curr_mouse_y;
+    float x_rot, y_rot = 0.0f;
+    float x_total_rot, y_total_rot = 0.0f;
+    float rotation_sensitivity = 2.0f;
     /* https://ogldev.org/www/tutorial12/tutorial12.html */
     transform_list_push(&projection, (float[16]) {
             (1/tanf(FOV/2))/ASPECT_RATIO, 0.0f, 0.0f, 0.0f,
@@ -218,43 +215,39 @@ int main()
             0.0f, 0.0f, 1.0f, 0.0f}
         );
 
-    #define RPS .1
-    float angle = 0;
-    float delta_rotation = RPS/FPS * 2 * (float) M_PI;
-    int cur_tri = 0;
     while (!render_window_should_close(&window))
     {
         gettimeofday(&start_time, NULL);
-        angle = fmodf((angle + delta_rotation), 2 * M_PI);
         render_window_process_input(&window);
         glClearColor(0.0f, 0.6f, 0.4f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
-        /* for(size_t i=0; i<CUBE_COUNT; ++i) */
-        /* { */
+
         transform_list_clear(&model);
         transform_list_clear(&view);
+        x_rot = 0.0f;
+        y_rot = 0.0f;
+        
+        render_window_get_mouse_pos(&window, &curr_mouse_x, &curr_mouse_y);
 
-        float xp,yp,zp;
-        /* xp = cube_positions[i].x; */
-        /* yp = cube_positions[i].y; */
-        /* zp = cube_positions[i].z; */
-        /* translate(&model, xp/5.0f, yp/5.0f, zp/5.0f);e */
-        translate(&model, 0.0f, 0.0f, 5.5f);
-        /* scale(&model, 2.5, 2.5, 2.5); */
-        /* rotate_cw_x(&model, angle); */
-        /* rotate_cw_y(&model, angle); */
-
-        Vec3 u = (Vec3) {1.0f, 0.0f, 0.0f};
-        Vec3 v = (Vec3) {0.0f, 1.0f, 0.0f};
-        Vec3 n = (Vec3) {0.0f, 0.0f, 1.0f};
+        if(render_window_get_mouse_dragging(&window)) {
+            x_rot = rotation_sensitivity * (float) ((curr_mouse_x - prev_mouse_x) / WINDOW_WIDTH);
+            y_rot = rotation_sensitivity * (float) ((curr_mouse_y - prev_mouse_y) / WINDOW_HEIGHT);
+        }
+        x_total_rot += x_rot;
+        y_total_rot += y_rot;
+        rotate_ccw_y(&model, x_total_rot);
+        rotate_ccw_x(&model, y_total_rot);
 
         transform_list_push(&view, (float[16]) {
-                u.x, u.y, u.z, -eye_pos.x,
-                v.x, v.y, v.z, -eye_pos.y,
-                n.x, n.y, n.z, -eye_pos.z,
-                0.0f, 0.0f, 0.0f, 1.0f}
-            );
-      
+                1.0f,0.0f,0.0f, -camera.position.x,
+                0.0f,1.0f,0.0f, -camera.position.y,
+                0.0f,0.0f,1.0f,-camera.position.z,
+                0.0f, 0.0f, 0.0f, 1.0f});
+
+            prev_mouse_x = curr_mouse_x;
+            prev_mouse_y = curr_mouse_y;
+        
+            
         glUseProgram(shaderProgram);
         unsigned int model_loc = glGetUniformLocation(shaderProgram, "model");
         glUniformMatrix4fv(model_loc, model.size, GL_TRUE, (float*) model.transformations[0]);

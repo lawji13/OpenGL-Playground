@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-#define CAPACITY 4096
+#define CAPACITY 8192
 
 typedef struct Float_Buffer
 {
@@ -38,6 +38,10 @@ typedef struct Index_Buffer
     int buffer[CAPACITY];
     size_t size;
 } Index_Buffer;
+
+Vec3 vec3_normalize(Vec3 v);
+
+Vec3 vec3_cross(Vec3 v1, Vec3 v2);
 
 void push_back_vb(struct Vertex_Buffer* buff, Vertex vertex);
 

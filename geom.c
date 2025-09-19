@@ -1,9 +1,28 @@
 #include <assert.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <time.h>
 #include <math.h>
 #include <stdio.h>
 
 #include "geom.h"
+
+Vec3 vec3_cross(Vec3 a,  Vec3 b)
+{
+    return (Vec3) {.x = a.y * b.z - a.z * b.y,
+                   .y = a.z * b.x - a.x * b.z,
+                   .z = a.x * b.y - a.y * b.x,
+    };
+}
+
+Vec3 vec3_normalize(Vec3 v)
+{
+    float mag = sqrt(powf(v.x, 2) + powf(v.y, 2) + powf(v.z, 2));
+    return (Vec3) {.x = v.x/mag,
+                   .y = v.y/mag,
+                   .z = v.z/mag,
+    };
+}
 
 void push_back_vb(struct Vertex_Buffer* buff, Vertex vertex)
 {
@@ -126,11 +145,12 @@ void make_sphere_geom(Vertex_Buffer* buff, Index_Buffer* ibuff, int sectors, int
 {
     assert(sectors > 0);
     assert(stacks > 0);
+    srand(time(0));
 
     float deltaTheta = (float) (2*M_PI)/sectors;
     float deltaPhi = (float) M_PI/stacks;
 
-    Color col = (Color){.r = .18, .g = .18, .b = .18};
+    //Color col = (Color){.r = .18, .g = .18, .b = .18};
     
     for(int i = 0; i <= stacks; ++i)
     {
@@ -141,6 +161,11 @@ void make_sphere_geom(Vertex_Buffer* buff, Index_Buffer* ibuff, int sectors, int
             float x = sinf(phi) * cosf(theta);
             float y = cosf(phi);
             float z = sinf(phi) * sinf(theta);
+            float r = (double) rand() / RAND_MAX;
+            float g = (double) rand() / RAND_MAX;
+            float b = (double) rand() / RAND_MAX;
+
+            Color col = (Color){.r = r, .g = g, .b = b};
             push_back_vb(buff, (Vertex) {(Vec3) {x, y, z}, col});
         }
     }
