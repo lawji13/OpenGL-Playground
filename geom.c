@@ -49,97 +49,6 @@ void push_back_ib(struct Index_Buffer* buff, int i)
     buff->size++;
 }
 
-void make_cube_geom_vb(Vertex_Buffer* buff, Index_Buffer* ibuff)
-{
-    //top back left
-    push_back_vb(buff,(Vertex) {(Vec3) {-0.25,  0.25,  -0.25}, (Color) {1.0f, 0.0f, 0.0f}});
-
-    //top back right
-    push_back_vb(buff,(Vertex) {(Vec3) {0.25,  0.25,  -0.25}, (Color) {1.0f, 0.0f, 0.0f}});
-
-    //bot back left
-    push_back_vb(buff,(Vertex) {(Vec3) {-0.25,  -0.25,  -0.25}, (Color) {1.0f, 0.0f, 0.0f}});
-
-    //bot back right
-    push_back_vb(buff,(Vertex) {(Vec3) {0.25,  -0.25,  -0.25}, (Color) {1.0f, 0.0f, 0.0f}});
-
-    //top front left
-    push_back_vb(buff,(Vertex) {(Vec3) {-0.25,  0.25,  0.25}, (Color) {0.0f, 0.0f, 1.0f}});
-
-    //top front right
-    push_back_vb(buff,(Vertex) {(Vec3) {0.25,  0.25,  0.25}, (Color) {0.0f, 0.0f, 1.0f}});
-
-    //bot front left
-    push_back_vb(buff,(Vertex) {(Vec3) {-0.25,  -0.25,  0.25}, (Color) {0.0f, 0.0f, 1.0f}});
-
-    //bot front right
-    push_back_vb(buff,(Vertex) {(Vec3) {0.25,  -0.25,  0.25}, (Color) {0.0f, 0.0f, 1.0f}});
-/*
-  Back Face    Front Face
-  0 -------- 1  4 -------- 5
-  |          |  |          |
-  |          |  |          |
-  |          |  |          |
-  |          |  |          |
-  2 -------- 3  6 -------- 7
-
-  Top Face       Bot Face  
-  0 -------- 1   6 -------- 7
-  |          |   |          |
-  |          |   |          |
-  |          |   |          |
-  |          |   |          |
-  4 -------- 5   2 -------- 3
-*/
-    //back square face
-    push_back_ib(ibuff, 0);
-    push_back_ib(ibuff, 1);
-    push_back_ib(ibuff, 2);
-    push_back_ib(ibuff, 2);
-    push_back_ib(ibuff, 1);
-    push_back_ib(ibuff, 3);
-
-    //front square face
-    push_back_ib(ibuff, 4);
-    push_back_ib(ibuff, 6);
-    push_back_ib(ibuff, 5);
-    push_back_ib(ibuff, 6);
-    push_back_ib(ibuff, 7);
-    push_back_ib(ibuff, 5);
-
-    //top square face
-    push_back_ib(ibuff, 4);
-    push_back_ib(ibuff, 1);
-    push_back_ib(ibuff, 0);
-    push_back_ib(ibuff, 4);
-    push_back_ib(ibuff, 5);
-    push_back_ib(ibuff, 1);
-
-    //bot square face
-    push_back_ib(ibuff, 6);
-    push_back_ib(ibuff, 2);
-    push_back_ib(ibuff, 3);
-    push_back_ib(ibuff, 7);
-    push_back_ib(ibuff, 6);
-    push_back_ib(ibuff, 3);
-
-    //right side face
-    push_back_ib(ibuff, 5);
-    push_back_ib(ibuff, 3);
-    push_back_ib(ibuff, 1);
-    push_back_ib(ibuff, 5);
-    push_back_ib(ibuff, 7);
-    push_back_ib(ibuff, 3);
-
-    //left side face
-    push_back_ib(ibuff, 0);
-    push_back_ib(ibuff, 2);
-    push_back_ib(ibuff, 4);
-    push_back_ib(ibuff, 2);
-    push_back_ib(ibuff, 6);
-    push_back_ib(ibuff, 4);
-
-}
 
 void make_sphere_geom(Vertex_Buffer* buff, Index_Buffer* ibuff, int sectors, int stacks)
 {
@@ -166,7 +75,7 @@ void make_sphere_geom(Vertex_Buffer* buff, Index_Buffer* ibuff, int sectors, int
             float b = (double) rand() / RAND_MAX;
 
             Color col = (Color){.r = r, .g = g, .b = b};
-            push_back_vb(buff, (Vertex) {(Vec3) {x, y, z}, col});
+            push_back_vb(buff, (Vertex) {(Vec3) {x, y, z}, col, (Texture){.s = 0.0f, .t = 0.0f}});
         }
     }
 
@@ -195,6 +104,58 @@ void make_sphere_geom(Vertex_Buffer* buff, Index_Buffer* ibuff, int sectors, int
         }
     }
 }
+
+void make_earth_geom(Vertex_Buffer* buff, Index_Buffer* ibuff)
+{
+    int sectors = 32;
+    int stacks = 32;
+    srand(time(0));
+
+    float deltaTheta = (float) (2*M_PI)/sectors;
+    float deltaPhi = (float) M_PI/stacks;
+    float deltaS = 1.0f/(sectors/2);
+    float deltaT = 1.0f/(stacks/2);
+
+    for(int i = 0; i <= stacks/2; ++i)
+    {
+        float phi = (float) M_PI/2 - (i * deltaPhi);
+        for(int j = 0; j <= sectors/2; ++j)
+        {
+            float theta = -1 * M_PI + (j * deltaTheta);
+            float x = sinf(phi) * cosf(theta);
+            float y = cosf(phi);
+            float z = sinf(phi) * sinf(theta);
+
+            float r = (double) rand() / RAND_MAX;
+            float g = (double) rand() / RAND_MAX;
+            float b = (double) rand() / RAND_MAX;
+            Color col = (Color){.r = r, .g = g, .b = b};
+
+            float s = j * deltaS;
+            float t = 1 - (i * deltaT);
+            Texture tex = (Texture){.s = s, .t = t};
+
+            push_back_vb(buff, (Vertex) {(Vec3) {x, y, z}, col, tex});
+        }
+    }
+    for(int i = 0; i < stacks/2; ++i)
+    {
+        for(int j = 0; j < sectors/2; ++j)
+        {
+            int temp = i * (sectors/2 + 1) + j;
+            int temp2 = sectors/2 * (i + 1) + 1 + i + j;
+
+            push_back_ib(ibuff, temp + 1);
+            push_back_ib(ibuff, temp);
+            push_back_ib(ibuff, temp2);
+
+            push_back_ib(ibuff, temp + 1);
+            push_back_ib(ibuff, temp2);
+            push_back_ib(ibuff, temp2 + 1);
+        }
+    }
+}
+
 
 void make_circle_geom(Float_Buffer* buff, Index_Buffer* ibuff, int segments)
 {

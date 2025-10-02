@@ -28,7 +28,7 @@
 #define CUBE_COUNT 3
 
 RenderWindow window = {0};
-Camera camera = {.position = (Vec3) {0.0f, 0.0f, -5.5f},
+Camera camera = {.position = (Vec3) {0.0f, 0.0f, -1.5f},
                  .up = (Vec3) {0.0f, 1.0f, 0.0f},
                  .target = (Vec3) {0.0f, 0.0f, 1.0f},
 };
@@ -54,22 +54,22 @@ bool compile_shader(const char* shader_src, int type, unsigned int* shader_handl
 
 void move_eye_forward(void)
 {
-    camera.position = (Vec3) {camera.position.x, camera.position.y, camera.position.z + 0.1f};
+    camera.position = (Vec3) {camera.position.x, camera.position.y, camera.position.z + 0.01f};
 }
 
 void move_eye_backward(void)
 {
-    camera.position = (Vec3) {camera.position.x, camera.position.y, camera.position.z - 0.1f};
+    camera.position = (Vec3) {camera.position.x, camera.position.y, camera.position.z - 0.01f};
 }
 
 void move_eye_right(void)
 {
-    camera.position = (Vec3) {camera.position.x + 0.1, camera.position.y, camera.position.z};
+    camera.position = (Vec3) {camera.position.x + 0.01, camera.position.y, camera.position.z};
 }
 
 void move_eye_left(void)
 {
-    camera.position = (Vec3) {camera.position.x - 0.1, camera.position.y, camera.position.z};
+    camera.position = (Vec3) {camera.position.x - 0.01, camera.position.y, camera.position.z};
 }
 
 void mouse_click(void)
@@ -90,7 +90,7 @@ int main()
     
     Index_Buffer ibuff = {0};
     Vertex_Buffer vbuff = {0};
-    make_sphere_geom(&vbuff, &ibuff, 30, 30);
+    make_earth_geom(&vbuff, &ibuff);
 
     if(!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
@@ -155,17 +155,17 @@ int main()
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(ibuff.buffer), ibuff.buffer, GL_STATIC_DRAW);
 
     //pos
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 6, (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8, (void*)0);
     glEnableVertexAttribArray(0);
 
     //color
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 6, (void*)(sizeof(float) * 3));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8, (void*)(sizeof(float) * 3));
     glEnableVertexAttribArray(1);
 
     //text
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 4, (void*)(sizeof(float) * 2));
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 8, (void*)(sizeof(float) * 6));
     glEnableVertexAttribArray(2);
-
+    /* glPolygonMode( GL_FRONT_AND_BACK, GL_LINE ); */
     glEnable(GL_CULL_FACE);
     glCullFace(GL_FRONT);
 
@@ -177,12 +177,12 @@ int main()
     glBindTexture(GL_TEXTURE_2D, texture);
     
     int width, height, nrChannels;
-    unsigned char *data = stbi_load("smiley.jpg", &width, &height, &nrChannels, 0);
+    unsigned char *data = stbi_load("earth00.jpg", &width, &height, &nrChannels, 0);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     if(data)
     {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
     }
     else
@@ -206,7 +206,7 @@ int main()
     double curr_mouse_x, curr_mouse_y;
     float x_rot, y_rot = 0.0f;
     float x_total_rot, y_total_rot = 0.0f;
-    float rotation_sensitivity = 2.0f;
+    float rotation_sensitivity = 0.5f;
     /* https://ogldev.org/www/tutorial12/tutorial12.html */
     transform_list_push(&projection, (float[16]) {
             (1/tanf(FOV/2))/ASPECT_RATIO, 0.0f, 0.0f, 0.0f,

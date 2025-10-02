@@ -21,10 +21,16 @@ typedef struct Color
     float r,g,b;
 }Color;
 
+typedef struct Texture
+{
+    float s,t;
+}Texture;
+
 typedef struct Vertex
 {
     Vec3 pos;
     Color col;
+    Texture tex;
 }Vertex;
 
 typedef struct Vertex_Buffer
@@ -52,6 +58,8 @@ void push_back_ib(struct Index_Buffer* buff, int i);
 void make_cube_geom_vb(Vertex_Buffer* buff, Index_Buffer* ibuff);
 
 void make_sphere_geom(Vertex_Buffer* buff, Index_Buffer* ibuff, int sectors, int stacks);
+
+void make_earth_geom(Vertex_Buffer* buff, Index_Buffer* ibuff);
     
 void make_circle_geom(Float_Buffer* buff, Index_Buffer* ibuff, int segments);
 
